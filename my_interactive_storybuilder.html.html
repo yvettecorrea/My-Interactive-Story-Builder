@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Story Builder & Writing Assistant (Grades 1–10)</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --primary-bg: #f3f0ff;
+    --card-bg: #ffffff;
+    --accent-purple: #7c3aed;
+    --accent-pink: #ec4899;
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-yellow: #f59e0b;
+    --text-dark: #1f2937;
+    --text-muted: #6b7280;
+    --border-radius: 20px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Comic Sans MS', 'Chalkboard SE', 'Segoe UI', sans-serif; }
+  body { background-color: var(--primary-bg); color: var(--text-dark); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  
+  .app-container { max-width: 950px; width: 100%; }
+
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 32px; color: var(--accent-purple); text-shadow: 2px 2px 0px #e9d5ff; }
+  header p { font-size: 16px; color: var(--text-muted); font-weight: bold; }
+
+  /* Grade Selector Banner */
+  .grade-banner {
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: white; padding: 16px 24px; border-radius: var(--border-radius);
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+    box-shadow: 0 10px 20px rgba(124, 58, 237, 0.2); margin-bottom: 24px; gap: 12px;
+  }
+  .grade-banner label { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+  .grade-select {
+    padding: 10px 18px; border-radius: 12px; border: none; font-size: 16px;
+    font-weight: bold; color: var(--accent-purple); background: white; cursor: pointer; outline: none;
+  }
+
+  /* Navigation Tabs */
+  .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 12px 22px; border: none; background-color: var(--card-bg);
+    border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 15px;
+    color: var(--text-dark); transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn.active { background: var(--accent-purple); color: white; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(124, 58, 237, 0.3); }
+
+  /* Sections */
+  .section-card {
+    background: var(--card-bg); border-radius: var(--border-radius); padding: 28px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05); display: none; margin-bottom: 24px;
+    border: 4px solid #f3e8ff; transition: all 0.3s ease;
+  }
+  .section-card.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Plot Builder Cards */
+  .plot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0; }
+  .plot-card {
+    background: #fdf2f8; border: 3px dashed #f472b6; border-radius: 16px; padding: 16px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .plot-card:hover, .plot-card.selected { background: #fce7f3; border-style: solid; border-color: var(--accent-pink); transform: scale(1.03); }
+  .plot-card h4 { font-size: 16px; color: var(--accent-pink); margin-bottom: 6px; }
+  .plot-card p { font-size: 13px; color: var(--text-dark); }
+
+  /* Inputs */
+  input[type="text"], textarea {
+    width: 100%; padding: 14px; border-radius: 12px; border: 2px solid #e5e7eb;
+    font-size: 15px; outline: none; margin-top: 8px; transition: border-color 0.2s;
+  }
+  input[type="text"]:focus, textarea:focus { border-color: var(--accent-purple); }
+  textarea { min-height: 180px; resize: vertical; font-family: inherit; }
+
+  /* Word Bank Chips */
+  .word-bank { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; max-height: 120px; overflow-y: auto; padding: 8px; background: #f9fafb; border-radius: 12px; }
+  .word-chip {
+    background: #e0e7ff; color: #3730a3; padding: 6px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: bold; cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .word-chip:hover { background: var(--accent-blue); color: white; transform: scale(1.08); }
+
+  /* Sentence Enhancer Box */
+  .enhancer-box {
+    background: #f0fdf4; border: 2px solid #86efac; border-radius: 16px; padding: 18px; margin-top: 20px;
+  }
+  .enhancer-box h4 { color: var(--accent-green); display: flex; align-items: center; gap: 8px; font-size: 16px; }
+
+  /* Buttons */
+  .btn {
+    background: var(--accent-purple); color: white; border: none; padding: 14px 28px;
+    border-radius: 30px; font-size: 16px; font-weight: bold; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); transition: all 0.2s; display: inline-flex;
+    align-items: center; gap: 8px; justify-content: center;
+  }
+  .btn:hover { background: #6d28d9; transform: translateY(-2px); }
+  .btn-green { background: var(--accent-green); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+  .btn-green:hover { background: #059669; }
+  .btn-yellow { background: var(--accent-yellow); color: white; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
+
+  /* Star & Milestone Badge */
+  .star-badge { font-size: 24px; display: inline-flex; align-items: center; gap: 6px; background: #fffbeeb; padding: 6px 16px; border-radius: 20px; border: 2px solid #fde68a; color: #b45309; font-weight: bold; }
+
+  /* Teacher Dashboard Logs */
+  .log-item {
+    background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+  }
+  .log-header { display: flex; justify-content: space-between; font-weight: bold; color: var(--accent-purple); margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <header>
+    <h1>📖 Interactive Story Builder & Assistant</h1>
+    <p>Design your plot, discover dynamic words, level up sentences & write your masterpiece!</p>
+  </header>
+
+  <!-- Grade Level Selector -->
+  <div class="grade-banner">
+    <label for="gradeSelect">🎓 Select Learner Grade Level:</label>
+    <select id="gradeSelect" class="grade-select" onchange="updateGradeLevel()">
+      <option value="1">Grade 1 (Early Writer)</option>
+      <option value="2">Grade 2 (Early Writer)</option>
+      <option value="3">Grade 3 (Early Writer)</option>
+      <option value="4">Grade 4 (Developing Writer)</option>
+      <option value="5">Grade 5 (Developing Writer)</option>
+      <option value="6" selected>Grade 6 (Intermediate Writer)</option>
+      <option value="7">Grade 7 (Intermediate Writer)</option>
+      <option value="8">Grade 8 (Advanced Writer)</option>
+      <option value="9">Grade 9 (Advanced Writer)</option>
+      <option value="10">Grade 10 (Master Writer)</option>
+    </select>
+  </div>
+
+  <!-- Student Name Bar -->
+  <div style="background: white; padding: 16px 24px; border-radius: var(--border-radius); margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+    <label style="font-weight: bold; color: var(--accent-purple);">👤 Author Name:</label>
+    <input type="text" id="authorName" placeholder="Enter your name here..." style="flex: 1; min-width: 200px; margin-top: 0;">
+    <div class="star-badge" id="starCounter">⭐ 0 Stars Earned</div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('tab-plot')">🧩 1. Plot Blueprint</button>
+    <button class="tab-btn" onclick="switchTab('tab-bank')">🎨 2. Grade Word Bank</button>
+    <button class="tab-btn" onclick="switchTab('tab-write')">✍️ 3. Write & Level Up</button>
+    <button class="tab-btn" onclick="switchTab('tab-dash')">📚 4. Saved Stories & Dashboard</button>
+  </div>
+
+  <!-- TAB 1: PLOT BLUEPRINT -->
+  <div id="tab-plot" class="section-card active">
+    <h3>🧩 Step 1: Design Your Story Blueprint</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;" id="plotInstructions">Pick your elements or type your custom ideas below!</p>
+    
+    <button class="btn btn-yellow" onclick="randomizePlot()" style="margin-bottom: 16px;">🎲 Randomize Plot Idea!</button>
+
+    <div class="plot-grid" id="plotGrid">
+      <!-- Plot elements rendered dynamically based on grade -->
+    </div>
+
+    <div style="margin-top: 16px;">
+      <label style="font-weight: bold; color: var(--accent-purple);">📝 Selected Plot Blueprint Summary:</label>
+      <textarea id="plotSummary" style="min-height: 80px;" readonly placeholder="Your plot choices will appear here..."></textarea>
+    </div>
+
+    <div style="text-align: right; margin-top: 20px;">
+      <button class="btn" onclick="switchTab('tab-bank')">Next: Explore Word Bank ➔</button>
+    </div>
+  </div>
+
+  <!-- TAB 2: GRADE WORD BANK -->
+  <div id="tab-bank" class="section-card">
+    <h3>🎨 Step 2: Grade-Adaptive Vocabulary & Techniques</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;" id="bankDesc">Click any word chip to copy it into your story draft!</p>
+
+    <h4 style="color: var(--accent-purple); margin-top: 12px;">✨ Sensory & Descriptive Words</h4>
+    <div class="word-bank" id="sensoryBank"></div>
+
+    <h4 style="color: var(--accent-pink); margin-top: 12px;">⚡ Action & Strong Verbs</h4>
+    <div class="word-bank" id="actionBank"></div>
+
+    <h4 style="color: var(--accent-blue); margin-top: 12px;">🔗 Transition Words & Connectors</h4>
+    <div class="word-bank" id="transitionBank"></div>
+
+    <h4 style="color: var(--accent-green); margin-top: 12px;">🎭 Literary Techniques & Figurative Language</h4>
+    <div class="word-bank" id="techBank"></div>
+
+    <div style="text-align: right; margin-top: 20px;">
+      <button class="btn" onclick="switchTab('tab-write')">Next: Start Writing Your Story ➔</button>
+    </div>
+  </div>
+
+  <!-- TAB 3: WRITE & LEVEL UP -->
+  <div id="tab-write" class="section-card">
+    <h3>✍️ Step 3: Write Your Story & Level Up Sentences</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px;">Write your story here. Use the assistant below to enhance plain sentences!</p>
+
+    <div>
+      <input type="text" id="storyTitle" placeholder="Enter your Story Title here..." style="font-weight: bold; font-size: 18px; margin-bottom: 12px;">
+      <textarea id="storyText" placeholder="Once upon a time..." oninput="updateWordCount()"></textarea>
+      <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-top: 6px;">
+        <span id="wordCountLabel">Word Count: 0 words</span>
+        <span id="targetCountLabel">Target for Grade 6: 100+ words</span>
+      </div>
+    </div>
+
+    <!-- Sentence Enhancer Tool -->
+    <div class="enhancer-box">
+      <h4>✨ "Level Up My Writing!" Assistant</h4>
+      <p style="font-size: 13px; color: #374151; margin-bottom: 10px;">Type a simple sentence (e.g., "The cat ran away") and see age-appropriate enhancements!</p>
+      
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <input type="text" id="inputSimpleSentence" placeholder="Paste or type a plain sentence..." style="flex: 1; margin-top: 0;">
+        <button class="btn btn-green" onclick="enhanceSentence()">Enhance My Writing! 🪄</button>
+      </div>
+
+      <div id="enhancedOutput" style="margin-top: 14px; font-size: 14px; line-height: 1.6; display: none;">
+        <!-- Enhanced options display here -->
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; text-align: center;">
+      <button class="btn btn-green" style="font-size: 18px; padding: 16px 36px;" onclick="finishAndSaveStory()">🎉 Finish & Save Story (Earn ⭐)</button>
+    </div>
+  </div>
+
+  <!-- TAB 4: SAVED STORIES & DASHBOARD -->
+  <div id="tab-dash" class="section-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 16px;">
+      <h3>📚 Saved Stories & Teacher Dashboard</h3>
+      <button class="btn btn-yellow" onclick="exportAllJSON()">📥 Export All Stories (JSON/TXT)</button>
+    </div>
+
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">Review saved creations, view stars earned, or print storybooks.</p>
+
+    <div id="savedStoriesList">
+      <!-- Saved stories rendered here -->
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentGrade = 6;
+  let earnedStars = 0;
+  let selectedPlot = { genre: '', setting: '', conflict: '', climax: '' };
+
+  // Data Banks Scaled by Grade Levels
+  const gradeData = {
+    "early": { // Grades 1-3
+      targetWords: 30,
+      plots: {
+        genre: ["🏰 Magical Kingdom", "🐾 Talking Animals", "🚀 Space Adventure", "🌳 Enchanted Forest"],
+        setting: ["Sunny Meadow", "Secret Treehouse", "Underwater Castle", "Cozy Cottage"],
+        conflict: ["Lost a precious toy", "Friend got scared", "Strange noise in the dark", "Rain cancelled play day"],
+        climax: ["Found a magic key!", "Worked together as a team", "Discovered a hidden map", "Helped a lonely creature"]
+      },
+      words: {
+        sensory: ["Bright", "Soft", "Cozy", "Loud", "Shiny", "Tiny", "Sweet", "Fluffy"],
+        action: ["Hopped", "Shouted", "Giggled", "Ran", "Danced", "Squeaked", "Zoomed"],
+        transitions: ["Then", "Suddenly", "Next", "Finally", "At last", "Because"],
+        tech: ["As fast as a cheetah 🐆", "Happy like a puppy 🐶", "Soft like wool ☁️"]
+      }
+    },
+    "developing": { // Grades 4-5
+      targetWords: 60,
+      plots: {
+        genre: ["🔍 Mystery & Detective", "⛰️ Wilderness Survival", "⏳ Time Travel", "Superhero Origin"],
+        setting: ["Abandoned Mansion", "Foggy Island", "Ancient Museum", "Futuristic City"],
+        conflict: ["Clue vanished mysteriously", "Trapped in a sudden storm", "Clock is ticking down", "Secret villain revealed"],
+        climax: ["Cracked the secret code!", "Escaped just in time", "Uncovered the truth", "Unlocked super powers"]
+      },
+      words: {
+        sensory: ["Mysterious", "Glimmering", "Echoing", "Freezing", "Dazzling", "Fragrant"],
+        action: ["Darted", "Whispered", "Crept", "Shattered", "Vaulted", "Pondered"],
+        transitions: ["Meanwhile", "Without warning", "In addition", "Consequently", "Before long"],
+        tech: ["Eyes like burning coals 🔥", "Silence heavy as stone 🪨", "Personification: The wind howled"]
+      }
+    },
+    "intermediate": { // Grades 6-7
+      targetWords: 100,
+      plots: {
+        genre: ["🎭 Drama & Conflict", "🌌 Sci-Fi Distopia", "🗡️ Mythological Quest", "Horror / Suspense"],
+        setting: ["Overgrown Ruins", "Subterranean Lab", "Storm-tossed Ship", "Quiet Library at Midnight"],
+        conflict: ["Moral dilemma choice", "Betrayal by an ally", "Rival stealing victory", "Ancient curse activated"],
+        climax: ["Confronting fear directly", "Sacrificing prized possession", "Outsmarting the antagonist", "Unraveling plot twist"]
+      },
+      words: {
+        sensory: ["Eerie", "Luminescent", "Suffocating", "Resplendent", "Jangled", "Aromatic"],
+        action: ["Lurch", "Emblazon", "Exasperate", "Manipulate", "Illuminate", "Reverberate"],
+        transitions: ["On the contrary", "Furthermore", "In stark contrast", "Inevitably", "Notwithstanding"],
+        tech: ["Simile: Like a moth to flame", "Metaphor: Heart was a locked vault", "Show Don't Tell: Hands trembled"]
+      }
+    },
+    "advanced": { // Grades 8-10
+      targetWords: 180,
+      plots: {
+        genre: ["🏛️ Psychological Thriller", "📜 Historical Fiction", "🌌 Cosmic Mystery", "Philosophical Journey"],
+        setting: ["Dystopian Cyber-City", "War-torn Citadel", "Solitary Space Station", "Victorian London Alley"],
+        conflict: ["Internal ideological struggle", "Corruption of institution", "Existential crisis", "Societal revolution"],
+        climax: ["Self-actualization moment", "Pyre of old identity", "Catalyst of change", "Bittersweet resolution"]
+      },
+      words: {
+        sensory: ["Melancholic", "Ephemeral", "Cacophonous", "Visceral", "Pellucid", "Tenebrous"],
+        action: ["Elucidate", "Exacerbate", "Recalibrate", "Subvert", "Transcend", "Dissemble"],
+        transitions: ["Albeit", "Paradoxically", "Hitherto", "Predominantly", "Concurrently"],
+        tech: ["Foreshadowing & Symbolism", "Irony & Juxtaposition", "Extended Motif", "Nuanced Internal Monologue"]
+      }
+    }
+  };
+
+  function getGradeCategory(grade) {
+    if (grade <= 3) return "early";
+    if (grade <= 5) return "developing";
+    if (grade <= 7) return "intermediate";
+    return "advanced";
+  }
+
+  function updateGradeLevel() {
+    currentGrade = parseInt(document.getElementById('gradeSelect').value);
+    const catKey = getGradeCategory(currentGrade);
+    const cat = gradeData[catKey];
+
+    // Update target word label
+    document.getElementById('targetCountLabel').innerText = `Target for Grade ${currentGrade}: ${cat.targetWords}+ words`;
+
+    // Render Plot Grid
+    renderPlotGrid(cat.plots);
+
+    // Render Word Banks
+    renderWordBank('sensoryBank', cat.words.sensory);
+    renderWordBank('actionBank', cat.words.action);
+    renderWordBank('transitionBank', cat.words.transitions);
+    renderWordBank('techBank', cat.words.tech);
+
+    updateWordCount();
+  }
+
+  function renderPlotGrid(plots) {
+    const grid = document.getElementById('plotGrid');
+    grid.innerHTML = `
+      <div class="plot-card" onclick="pickPlot('genre', '${plots.genre[0]}')"><h4>Genre</h4><p id="p_genre">${plots.genre[0]}</p></div>
+      <div class="plot-card" onclick="pickPlot('setting', '${plots.setting[0]}')"><h4>Setting</h4><p id="p_setting">${plots.setting[0]}</p></div>
+      <div class="plot-card" onclick="pickPlot('conflict', '${plots.conflict[0]}')"><h4>Conflict</h4><p id="p_conflict">${plots.conflict[0]}</p></div>
+      <div class="plot-card" onclick="pickPlot('climax', '${plots.climax[0]}')"><h4>Climax</h4><p id="p_climax">${plots.climax[0]}</p></div>
+    `;
+    selectedPlot = { genre: plots.genre[0], setting: plots.setting[0], conflict: plots.conflict[0], climax: plots.climax[0] };
+    updatePlotSummary();
+  }
+
+  function pickPlot(type, val) {
+    selectedPlot[type] = val;
+    document.getElementById(`p_${type}`).innerText = val;
+    updatePlotSummary();
+  }
+
+  function randomizePlot() {
+    const cat = gradeData[getGradeCategory(currentGrade)].plots;
+    selectedPlot.genre = cat.genre[Math.floor(Math.random()*cat.genre.length)];
+    selectedPlot.setting = cat.setting[Math.floor(Math.random()*cat.setting.length)];
+    selectedPlot.conflict = cat.conflict[Math.floor(Math.random()*cat.conflict.length)];
+    selectedPlot.climax = cat.climax[Math.floor(Math.random()*cat.climax.length)];
+
+    document.getElementById('p_genre').innerText = selectedPlot.genre;
+    document.getElementById('p_setting').innerText = selectedPlot.setting;
+    document.getElementById('p_conflict').innerText = selectedPlot.conflict;
+    document.getElementById('p_climax').innerText = selectedPlot.climax;
+    updatePlotSummary();
+  }
+
+  function updatePlotSummary() {
+    document.getElementById('plotSummary').value = 
+      `Genre: ${selectedPlot.genre}\nSetting: ${selectedPlot.setting}\nConflict: ${selectedPlot.conflict}\nClimax: ${selectedPlot.climax}`;
+  }
+
+  function renderWordBank(elementId, wordList) {
+    const container = document.getElementById(elementId);
+    container.innerHTML = '';
+    wordList.forEach(word => {
+      const chip = document.createElement('button');
+      chip.className = 'word-chip';
+      chip.innerText = word;
+      chip.onclick = () => insertWordToStory(word);
+      container.appendChild(chip);
+    });
+  }
+
+  function insertWordToStory(word) {
+    const area = document.getElementById('storyText');
+    area.value += ' ' + word;
+    updateWordCount();
+    alert(`Added "${word}" to your story!`);
+  }
+
+  function enhanceSentence() {
+    const input = document.getElementById('inputSimpleSentence').value.trim();
+    const outDiv = document.getElementById('enhancedOutput');
+    if (!input) { alert('Please enter a sentence first!'); return; }
+
+    let opt1 = '', opt2 = '', opt3 = '';
+    if (currentGrade <= 3) {
+      opt1 = `✨ Sensory & Color: "${input} with bright, sparkly colors in the cozy morning."`;
+      opt2 = `⚡ Action & Sound: "Suddenly, with a loud noise, ${input.toLowerCase()}!"`;
+      opt3 = `🐶 Fun Simile: "${input}, feeling as happy as a playful puppy!"`;
+    } else if (currentGrade <= 5) {
+      opt1 = `🌟 Descriptive Scene: "Underneath the misty sky, ${input.toLowerCase()} as silence fell."`;
+      opt2 = `👀 Show-Don't-Tell: "With wide eyes and a racing heartbeat, ${input.toLowerCase()}."`;
+      opt3 = `🔗 Smooth Transition: "Without warning, ${input.toLowerCase()} into the unknown."`;
+    } else if (currentGrade <= 7) {
+      opt1 = `🎭 Show-Don't-Tell: "Hands trembling and breath catching in their throat, ${input.toLowerCase()}."`;
+      opt2 = `🌊 Figurative Metaphor: "${input}, a wave of electric tension cutting through the room."`;
+      opt3 = `⚡ High-Impact Verbs: "Shadows danced ominously as ${input.toLowerCase()}."`;
+    } else {
+      opt1 = `🏛️ Sophisticated Literary: "Amidst the suffocating atmosphere, ${input.toLowerCase()}, an ominous harbinger of what lay ahead."`;
+      opt2 = `🔍 Psychological Nuance: "A subtle shift in perspective revealed how ${input.toLowerCase()}, fracturing the silence."`;
+      opt3 = `⚡ Juxtaposition: "In stark contrast to the serenity around them, ${input.toLowerCase()}."`;
+    }
+
+    outDiv.style.display = 'block';
+    outDiv.innerHTML = `
+      <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 6px; border-left: 4px solid var(--accent-green);">${opt1}</div>
+      <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 6px; border-left: 4px solid var(--accent-purple);">${opt2}</div>
+      <div style="background: white; padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent-pink);">${opt3}</div>
+    `;
+  }
+
+  function updateWordCount() {
+    const text = document.getElementById('storyText').value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    document.getElementById('wordCountLabel').innerText = `Word Count: ${words} words`;
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.section-card').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function finishAndSaveStory() {
+    const author = document.getElementById('authorName').value.trim() || 'Anonymous Author';
+    const title = document.getElementById('storyTitle').value.trim() || 'Untitled Story';
+    const body = document.getElementById('storyText').value.trim();
+
+    if (!body) { alert('Please write a story before saving!'); return; }
+
+    earnedStars += 1;
+    document.getElementById('starCounter').innerText = `⭐ ${earnedStars} Stars Earned`;
+
+    // Confetti Celebration
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+    // Save to LocalStorage
+    const storyObj = {
+      id: Date.now(),
+      author: author,
+      title: title,
+      grade: currentGrade,
+      plot: selectedPlot,
+      body: body,
+      date: new Date().toLocaleDateString()
+    };
+
+    let saved = JSON.parse(localStorage.getItem('gradeStories') || '[]');
+    saved.unshift(storyObj);
+    localStorage.setItem('gradeStories', JSON.stringify(saved));
+
+    renderSavedStories();
+    alert(`🎉 Congratulations ${author}! Your story was saved and you earned a Gold Star ⭐!`);
+    switchTab('tab-dash');
+  }
+
+  function renderSavedStories() {
+    const container = document.getElementById('savedStoriesList');
+    let saved = JSON.parse(localStorage.getItem('gradeStories') || '[]');
+
+    if (saved.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-muted);">No saved stories found yet. Write one today!</p>';
+      return;
+    }
+
+    container.innerHTML = saved.map(s => `
+      <div class="log-item">
+        <div class="log-header">
+          <span>📖 ${s.title} (Grade ${s.grade})</span>
+          <span>By: ${s.author} | ${s.date}</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">Blueprint: ${s.plot.genre || 'N/A'} | ${s.plot.setting || 'N/A'}</p>
+        <p style="font-size: 14px; white-space: pre-wrap;">${s.body}</p>
+      </div>
+    `).join('');
+  }
+
+  function exportAllJSON() {
+    let saved = localStorage.getItem('gradeStories') || '[]';
+    const blob = new Blob([saved], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `student_stories_export.json`;
+    a.click();
+  }
+
+  // Initialize App
+  updateGradeLevel();
+  renderSavedStories();
+</script>
+</body>
+</html>
